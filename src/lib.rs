@@ -1,6 +1,6 @@
 mod vec3;
 
-use std::{array, f64::consts::TAU};
+use std::{array, cell::RefCell, f64::consts::TAU};
 
 use vec3::Vec3;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
@@ -33,6 +33,10 @@ struct AnimationCanvas {
 	callback: Closure<dyn FnMut()>,
 }
 
+thread_local! {
+	static CHOSEN_SHAPE: RefCell<usize> = const { RefCell::new(usize::MAX) };
+}
+
 fn cube() -> Vec<Vec3> {
 	let mut v = Vec::with_capacity(5 * 5 * 5);
 	for x in -2..=2 {
@@ -46,7 +50,107 @@ fn cube() -> Vec<Vec3> {
 			}
 		}
 	}
+
+	if rand::random::<f64>() > 0.5 {
+		v.sort_by(|a, b| {
+			a.manhattan_norm()
+				.partial_cmp(&b.manhattan_norm())
+				.unwrap()
+				.then(a.z.partial_cmp(&b.z).unwrap())
+				.then(a.y.atan2(a.x).partial_cmp(&b.y.atan2(b.x)).unwrap())
+		});
+	}
+
 	v
+}
+
+fn polygon_tower() -> Vec<Vec3> {
+	let mut v = Vec::with_capacity(16 * 17 / 2);
+
+	for h in 1..=16 {
+		let r = (h - 1) as f64 / 6.;
+		for n in 0..h {
+			let theta = n as f64 / h as f64 * TAU;
+			v.push(Vec3 {
+				x: r * theta.cos(),
+				y: r * theta.sin(),
+				z: (h - 10) as f64 / 2.5,
+			})
+		}
+	}
+
+	v
+}
+
+fn torus() -> Vec<Vec3> {
+	fn get(n: i32, k: i32) -> Vec3 {
+		const R: f64 = 1.;
+		let (s, c) = (n as f64 / 16. * TAU).sin_cos();
+		let theta = (k as f64 / 8. + n as f64 / 16.) * TAU;
+		let x = 2.75 + R * theta.cos();
+		let y = R * theta.sin();
+		Vec3 {
+			x: x * c,
+			y,
+			z: x * s,
+		}
+	}
+
+	let mut v = Vec::with_capacity(8 * 16);
+
+	if rand::random::<f64>() > 0.5 {
+		for n in 0..16 {
+			for k in 0..8 {
+				v.push(get(n, k));
+			}
+		}
+	} else {
+		for k in 0..8 {
+			for n in 0..16 {
+				v.push(get(n, k));
+			}
+		}
+	}
+
+	v
+}
+
+fn sierpinski_gasket() -> Vec<Vec3> {
+	let mut v = Vec::with_capacity(3 * 3 * 3 * 3);
+
+	let mut binom = [0u8; 16];
+
+	binom[0] = 1;
+
+	let a: Vec3 = (-0.5, -3f64.sqrt() / 2., 0f64).into();
+	let b: Vec3 = (1f64, 0f64, 0f64).into();
+	let c: Vec3 = (0f64, 16. * 3f64.sqrt() / 3., 0f64).into();
+
+	for n in 0..16 {
+		for i in (1..=n).rev() {
+			binom[i] = binom[i] ^ binom[i - 1];
+		}
+		for k in 0..=n {
+			if binom[k] != 0 {
+				v.push(a * n as f64 * 0.5 + b * k as f64 * 0.5 + c * 0.5);
+			}
+		}
+	}
+
+	v
+}
+
+fn get_random_vertices() -> Vec<Vec3> {
+	const SHAPES: [fn() -> Vec<Vec3>; 4] = [cube, polygon_tower, torus, sierpinski_gasket];
+	let id = CHOSEN_SHAPE.with_borrow_mut(|id| {
+		*id = if *id == usize::MAX {
+			rand::random::<usize>() % SHAPES.len()
+		} else {
+			(*id + 1 + rand::random::<usize>() % (SHAPES.len() - 1)) % SHAPES.len()
+		};
+		*id
+	});
+	SHAPES[id]()
 }
 
 fn logistic(x: f64, a: f64, k: f64) -> f64 {
@@ -70,7 +174,7 @@ impl Component for AnimationCanvas {
 			state: State::PopIn { timer: 0 },
 			angle: array::from_fn(|_| rand::random::<f64>() * TAU),
 			angle_velocity: [0.01, 0.02, 0.03],
-			vertices: cube(),
+			vertices: get_random_vertices(),
 			callback: Closure::wrap(Box::new(move || ctx.send_message(Msg::Tick))),
 		}
 	}
@@ -123,6 +227,7 @@ impl AnimationCanvas {
 				*timer += 1;
 				if in_out_coefficient(*timer as f64 - 3. * self.vertices.len() as f64) > 1. - 1e-8 {
 					self.state = State::PopIn { timer: 0 };
+					self.vertices = get_random_vertices();
 				}
 			}
 		}
@@ -182,7 +287,7 @@ impl AnimationCanvas {
 				((a * t).cos(), (b * t).cos())
 			};
 
-			let gray_scale = (192. + (x / 2. - y + z) * 32.).clamp(0f64, 255.) as u8;
+			let gray_scale = (208. + (x / 3. - y / 3. + 1.5 * z) * 32.).clamp(0f64, 255.) as u8;
 			let co = z * 1.5 + 60.;
 			let x = center.x + (x + 0.05 * dx) * co;
 			let y = center.y + (y + 0.05 * dy) * co;

@@ -7,6 +7,12 @@ pub struct Vec3 {
 	pub z: f64,
 }
 
+impl Vec3 {
+	pub fn manhattan_norm(&self) -> f64 {
+		self.x.abs() + self.y.abs() + self.z.abs()
+	}
+}
+
 macro_rules! impl_binop {
 	($Trait:ident $fn:ident) => {
 		impl $Trait for Vec3 {
