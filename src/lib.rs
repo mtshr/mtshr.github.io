@@ -85,7 +85,7 @@ fn polygon_tower() -> Vec<Vec3> {
 fn torus() -> Vec<Vec3> {
 	fn get(n: i32, k: i32) -> Vec3 {
 		const R: f64 = 1.;
-		let (s, c) = (n as f64 / 16. * TAU).sin_cos();
+		let (s, c) = ((n as f64 + k as f64 / 8.) / 16. * TAU).sin_cos();
 		let theta = (k as f64 / 8. + n as f64 / 16.) * TAU;
 		let x = 2.75 + R * theta.cos();
 		let y = R * theta.sin();
