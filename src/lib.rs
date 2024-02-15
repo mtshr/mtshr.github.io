@@ -118,20 +118,13 @@ fn torus() -> Vec<Vec3> {
 fn sierpinski_gasket() -> Vec<Vec3> {
 	let mut v = Vec::with_capacity(3 * 3 * 3 * 3);
 
-	let mut binom = [0u8; 16];
-
-	binom[0] = 1;
-
 	let a: Vec3 = (-0.5, -3f64.sqrt() / 2., 0f64).into();
 	let b: Vec3 = (1f64, 0f64, 0f64).into();
 	let c: Vec3 = (0f64, 16. * 3f64.sqrt() / 3., 0f64).into();
 
 	for n in 0..16 {
-		for i in (1..=n).rev() {
-			binom[i] = binom[i] ^ binom[i - 1];
-		}
 		for k in 0..=n {
-			if binom[k] != 0 {
+			if n & k == k {
 				v.push(a * n as f64 * 0.5 + b * k as f64 * 0.5 + c * 0.5);
 			}
 		}
