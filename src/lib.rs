@@ -122,14 +122,35 @@ fn sierpinski_gasket() -> Vec<Vec3> {
 	let b: Vec3 = (1f64, 0f64, 0f64).into();
 	let c: Vec3 = (0f64, 16. * 3f64.sqrt() / 3., 0f64).into();
 
-	for n in 0..16 {
-		for k in 0..=n {
-			if n & k == k {
-				v.push(a * n as f64 * 0.5 + b * k as f64 * 0.5 + c * 0.5);
+	if rand::random::<f64>() > 0.5 {
+		for n in 0..16 {
+			for k in 0..=n {
+				if n & k == k {
+					v.push(a * n as f64 * 0.5 + b * k as f64 * 0.5 + c * 0.5);
+				}
 			}
 		}
+	} else {
+		for i in 0..81 {
+			let mut i = i;
+			let mut n = 0;
+			let mut k = 0;
+			for e in 0..4 {
+				match i % 3 {
+					1 => {
+						n += 1 << e;
+					}
+					2 => {
+						n += 1 << e;
+						k += 1 << e;
+					}
+					_ => {}
+				}
+				i /= 3;
+			}
+			v.push(a * n as f64 * 0.5 + b * k as f64 * 0.5 + c * 0.5);
+		}
 	}
-
 	v
 }
 
