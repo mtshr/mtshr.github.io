@@ -68,18 +68,26 @@ fn polygon_tower() -> Vec<Vec3> {
 	let mut v = Vec::with_capacity(16 * 17 / 2);
 
 	for h in 1..=16 {
-		let r = (h - 1) as f64 / 6.;
 		for n in 0..h {
-			let theta = n as f64 / h as f64 * TAU;
-			v.push(Vec3 {
-				x: r * theta.cos(),
-				y: r * theta.sin(),
-				z: (h - 10) as f64 / 2.5,
-			})
+			v.push((h, n));
 		}
 	}
 
-	v
+	if rand::random::<f64>() > 0.5 {
+		v.sort_by(|a, b| (a.0 * b.1 - a.1 * b.0).cmp(&0).then(a.0.cmp(&b.0)));
+	}
+
+	v.into_iter()
+		.map(|(h, n)| {
+			let r = (h - 1) as f64 / 6.;
+			let theta = n as f64 / h as f64 * TAU;
+			Vec3 {
+				x: r * theta.cos(),
+				y: r * theta.sin(),
+				z: (h - 10) as f64 / 2.5,
+			}
+		})
+		.collect()
 }
 
 fn torus() -> Vec<Vec3> {
